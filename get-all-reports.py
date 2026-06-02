@@ -6,7 +6,6 @@ import time
 import xml.etree.ElementTree as ET
 
 MAX_ATTEMPTS = 10
-IS_TEST = True
 
 logging.basicConfig(
     level=logging.INFO,
@@ -139,18 +138,14 @@ def cleanse_for_directory_name(name):
     return name
 
 def main():
+    parser = argparse.ArgumentParser(description="Download Veracode reports for all applications")
+    parser.add_argument("--output", "-o", required=True, help="Folder to save all reports")
+    parser.add_argument("--format", "-f", choices=["pdf", "xml"], default="pdf", help="Report format to save (pdf or xml)")
+    args = parser.parse_args()
 
-    if IS_TEST:
-        out_dir = os.path.abspath("test_reports")
-        file_format = "xml"
-    else:
-        parser = argparse.ArgumentParser(description="Download Veracode reports for all applications")
-        parser.add_argument("--output", "-o", required=True, help="Folder to save all reports")
-        parser.add_argument("--format", "-f", choices=["pdf", "xml"], default="pdf", help="Report format to save (pdf or xml)")
-        args = parser.parse_args()
+    out_dir = os.path.abspath(args.output)
+    file_format = args.format
 
-        out_dir = os.path.abspath(args.output)
-        file_format = args.format
     os.makedirs(out_dir, exist_ok=True)
     logger.info(f"Output directory set to {out_dir}")
     logger.info("Starting report download")
@@ -164,22 +159,16 @@ def main():
     # For each application, save a placeholder report file in the chosen format
     for app in applications:
         app_name = app["profile"]["name"]
-        logger.info(f"Processing application '{app_name}' ({app['id']})")
-        base_directory = os.path.join(out_dir, cleanse_for_directory_name(app_name))
-        os.makedirs(base_directory, exist_ok=True)
-        policy_scans_directory = os.path.join(base_directory, "policy_scans")
-        os.makedirs(policy_scans_directory, exist_ok=True)
-        save_reports_from_build_list(try_get_all_scans(app["id"]), policy_scans_directory, file_format)
-
+        base_directory = os.path.join(out_dir, app_name.replace(" ", "_").replace("/", "_"))
+        os.makedirs(base_directory, exist_ok=True) # Sanitize name for filename
+        save_reports_from_build_list(try_get_all_scans(app["id"]), base_directory, file_format)
         sandbox_list = try_get_sandbox_list(app["id"])
         if not sandbox_list:
             logger.info(f"No sandboxes found for application '{app_name}'")
             continue
 
         for sandbox in sandbox_list:
-            sandbox_name = sandbox["sandbox_name"]
-            logger.info(f"Processing sandbox '{sandbox_name}' for application '{app_name}'")
-            sandbox_directory = os.path.join(base_directory, f"Sandbox {cleanse_for_directory_name(sandbox_name)}")
+            sandbox_directory = os.path.join(base_directory, f"sandbox_{sandbox['sandbox_name']}".replace(" ", "_").replace("/", "_"))
             os.makedirs(sandbox_directory, exist_ok=True)
             save_reports_from_build_list(try_get_all_sandbox_scans(app["id"], sandbox["sandbox_id"]), sandbox_directory, file_format)
 
