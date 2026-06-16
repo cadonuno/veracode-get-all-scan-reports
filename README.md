@@ -14,7 +14,7 @@ This repository contains `get-all-reports.py`, a utility script for downloading 
 3. Install any required dependencies.
 
 ```bash
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ## Usage
